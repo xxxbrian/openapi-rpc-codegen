@@ -19,5 +19,9 @@ func LoadAndValidate(specPath string) (*openapi3.T, error) {
 		return nil, fmt.Errorf("OpenAPI validation error: %w", err)
 	}
 
+	if len(doc.Servers) == 0 || doc.Servers[0] == nil || doc.Servers[0].URL == "" {
+		return nil, fmt.Errorf("OpenAPI spec must define servers[0].url")
+	}
+
 	return doc, nil
 }
