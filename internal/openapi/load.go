@@ -1,12 +1,23 @@
 package openapi
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
 func LoadAndValidate(specPath string) (*openapi3.T, error) {
-	// TODO
-	return nil, errors.ErrUnsupported
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+
+	doc, err := loader.LoadFromFile(specPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load OpenAPI spec: %w", err)
+	}
+
+	if err := doc.Validate(loader.Context); err != nil {
+		return nil, fmt.Errorf("OpenAPI validation error: %w", err)
+	}
+
+	return doc, nil
 }
