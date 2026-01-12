@@ -29,14 +29,23 @@ func Dispatch(spec *ir.Spec, opt Options) ([]string, error) {
 			// TODO: Emit raw IR for debugging
 			fmt.Printf("%+v\n", spec)
 		case "ts-wx":
-			fs, err := wx.EmitTypes(spec, wx.EmitOptions{
-				OutDir: opt.OutDir,
-				Check:  opt.Check,
-			})
+			fs1, err := wx.EmitTypes(spec, wx.EmitOptions{OutDir: opt.OutDir, Check: opt.Check})
 			if err != nil {
 				return nil, err
 			}
-			files = append(files, fs...)
+			files = append(files, fs1...)
+
+			fs2, err := wx.EmitTransport(spec, wx.EmitOptions{OutDir: opt.OutDir, Check: opt.Check})
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, fs2...)
+
+			fs3, err := wx.EmitClient(spec, wx.EmitOptions{OutDir: opt.OutDir, Check: opt.Check})
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, fs3...)
 		default:
 			return nil, fmt.Errorf("unknown target: %s", t)
 		}
