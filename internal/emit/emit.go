@@ -26,6 +26,7 @@ func Dispatch(spec *ir.Spec, opt Options) ([]string, error) {
 		switch t {
 		case "raw-ir":
 			// TODO: Emit raw IR for debugging
+			fmt.Printf("%+v\n", spec)
 		default:
 			return nil, fmt.Errorf("unknown target: %s", t)
 		}
