@@ -5,6 +5,9 @@ package {{ .Package }}
 import (
 	"context"
 	"net/http"
+	{{- if .HasQuery }}
+	"strconv"
+	{{- end }}
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,6 +21,14 @@ import (
 type {{ .PathType }} struct {
 {{- range .PathFields }}
 	{{ .Name }} {{ .Type }}
+{{- end }}
+}
+{{- end }}
+
+{{- if .HasQuery }}
+type {{ .QueryType }} struct {
+{{- range .QueryFields }}
+	{{ .Name }} {{ .Type }} {{ .Tag }}
 {{- end }}
 }
 {{- end }}
@@ -62,7 +73,7 @@ func RegisterRoutes(r chi.Router, svc Services) {
 
 {{- range .Tags }}
 {{- range .Routes }}
-	r.{{ .Method }}({{ printf "%q" .Path }}, {{ .HandlerName }}(svc.{{ .TagName }}))
+	r.{{ .MethodName }}({{ printf "%q" .Path }}, {{ .HandlerName }}(svc.{{ .TagName }}))
 {{- end }}
 {{- end }}
 }
@@ -84,9 +95,100 @@ func {{ .HandlerName }}(svc {{ .TagName }}Service) http.HandlerFunc {
 		{{- end }}
 
 		{{- if .HasQuery }}
-		// TODO: typed query parsing (future)
 		var query {{ .QueryType }}
-		_ = query
+		values := r.URL.Query()
+		{{- range .QueryFields }}
+		{{- if .Required }}
+		value{{ .Name }} := values.Get({{ printf "%q" .JSONName }})
+		if value{{ .Name }} == "" {
+			WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "missing query param: {{ .JSONName }}"})
+			return
+		}
+		{{- if eq .ParseKind "int64" }}
+		if parsed{{ .Name }}, err := strconv.ParseInt(value{{ .Name }}, 10, 64); err != nil {
+			WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "invalid query param: {{ .JSONName }}"})
+			return
+		} else {
+			{{- if .IsPointer }}
+			query.{{ .Name }} = &parsed{{ .Name }}
+			{{- else }}
+			query.{{ .Name }} = parsed{{ .Name }}
+			{{- end }}
+		}
+		{{- else if eq .ParseKind "float64" }}
+		if parsed{{ .Name }}, err := strconv.ParseFloat(value{{ .Name }}, 64); err != nil {
+			WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "invalid query param: {{ .JSONName }}"})
+			return
+		} else {
+			{{- if .IsPointer }}
+			query.{{ .Name }} = &parsed{{ .Name }}
+			{{- else }}
+			query.{{ .Name }} = parsed{{ .Name }}
+			{{- end }}
+		}
+		{{- else if eq .ParseKind "bool" }}
+		if parsed{{ .Name }}, err := strconv.ParseBool(value{{ .Name }}); err != nil {
+			WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "invalid query param: {{ .JSONName }}"})
+			return
+		} else {
+			{{- if .IsPointer }}
+			query.{{ .Name }} = &parsed{{ .Name }}
+			{{- else }}
+			query.{{ .Name }} = parsed{{ .Name }}
+			{{- end }}
+		}
+		{{- else }}
+		{{- if .IsPointer }}
+		query.{{ .Name }} = &value{{ .Name }}
+		{{- else }}
+		query.{{ .Name }} = value{{ .Name }}
+		{{- end }}
+		{{- end }}
+		{{- else }}
+		if value{{ .Name }} := values.Get({{ printf "%q" .JSONName }}); value{{ .Name }} != "" {
+			{{- if eq .ParseKind "int64" }}
+			if parsed{{ .Name }}, err := strconv.ParseInt(value{{ .Name }}, 10, 64); err != nil {
+				WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "invalid query param: {{ .JSONName }}"})
+				return
+			} else {
+				{{- if .IsPointer }}
+				query.{{ .Name }} = &parsed{{ .Name }}
+				{{- else }}
+				query.{{ .Name }} = parsed{{ .Name }}
+				{{- end }}
+			}
+			{{- else if eq .ParseKind "float64" }}
+			if parsed{{ .Name }}, err := strconv.ParseFloat(value{{ .Name }}, 64); err != nil {
+				WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "invalid query param: {{ .JSONName }}"})
+				return
+			} else {
+				{{- if .IsPointer }}
+				query.{{ .Name }} = &parsed{{ .Name }}
+				{{- else }}
+				query.{{ .Name }} = parsed{{ .Name }}
+				{{- end }}
+			}
+			{{- else if eq .ParseKind "bool" }}
+			if parsed{{ .Name }}, err := strconv.ParseBool(value{{ .Name }}); err != nil {
+				WriteError(w, &RPCError{Status: http.StatusBadRequest, Message: "invalid query param: {{ .JSONName }}"})
+				return
+			} else {
+				{{- if .IsPointer }}
+				query.{{ .Name }} = &parsed{{ .Name }}
+				{{- else }}
+				query.{{ .Name }} = parsed{{ .Name }}
+				{{- end }}
+			}
+			{{- else }}
+			{{- if .IsPointer }}
+			query.{{ .Name }} = &value{{ .Name }}
+			{{- else }}
+			query.{{ .Name }} = value{{ .Name }}
+			{{- end }}
+			{{- end }}
+		}
+		{{- end }}
+		{{- end }}
 		{{- end }}
 
 		{{- if .HasBody }}

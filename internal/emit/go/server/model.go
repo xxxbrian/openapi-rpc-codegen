@@ -18,8 +18,9 @@ type ServerTemplateData struct {
 	Package string
 	BaseURL string
 
-	Types []GoTypeDecl
-	Tags  []GoTag
+	Types    []GoTypeDecl
+	Tags     []GoTag
+	HasQuery bool
 }
 
 type GoTag struct {
@@ -28,9 +29,10 @@ type GoTag struct {
 }
 
 type GoRoute struct {
-	Name   string // operationId
-	Method string // GET/POST
-	Path   string
+	Name       string // operationId
+	Method     string // GET/POST
+	Path       string
+	MethodName string // Get/Post
 
 	TagName string // GoTag.Name
 
@@ -48,9 +50,20 @@ type GoRoute struct {
 	RespInline bool
 
 	// for path struct fields
-	PathFields []GoField
+	PathFields  []GoField
+	QueryFields []GoQueryField
 
 	HandlerName string // e.g. "handleGetUser"
+}
+
+type GoQueryField struct {
+	Name      string
+	JSONName  string
+	Type      string
+	Tag       string
+	Required  bool
+	ParseKind string // string|int64|float64|bool
+	IsPointer bool
 }
 
 type GoTypeDecl struct {
@@ -93,6 +106,7 @@ func BuildServerData(spec *ir.Spec, pkg string) (*ServerTemplateData, error) {
 		return nil, err
 	}
 	data.Tags = tags
+	data.HasQuery = hasQuery(tags)
 
 	return data, nil
 }
@@ -179,7 +193,7 @@ func buildRoutes(spec *ir.Spec) ([]GoTag, error) {
 
 		gt := GoTag{Name: t}
 		for _, r := range rs {
-			gr, err := toGoRoute(t, r)
+			gr, err := toGoRoute(t, r, spec.Types)
 			if err != nil {
 				return nil, err
 			}
@@ -190,7 +204,7 @@ func buildRoutes(spec *ir.Spec) ([]GoTag, error) {
 	return out, nil
 }
 
-func toGoRoute(tag string, r ir.Route) (GoRoute, error) {
+func toGoRoute(tag string, r ir.Route, types map[string]ir.TypeDecl) (GoRoute, error) {
 	if r.Success.Type == nil {
 		return GoRoute{}, fmt.Errorf("%s: missing 200 response schema", r.Name)
 	}
@@ -198,6 +212,11 @@ func toGoRoute(tag string, r ir.Route) (GoRoute, error) {
 	op := GoPublicIdent(r.Name)
 	if op == "" {
 		return GoRoute{}, fmt.Errorf("invalid operationId: %q", r.Name)
+	}
+
+	methodName := methodName(r.Method)
+	if methodName == "" {
+		return GoRoute{}, fmt.Errorf("%s: unsupported method %q", r.Name, r.Method)
 	}
 
 	hasPath := len(r.PathParams) > 0
@@ -241,10 +260,36 @@ func toGoRoute(tag string, r ir.Route) (GoRoute, error) {
 		}
 	}
 
+	var queryFields []GoQueryField
+	if hasQuery {
+		for _, p := range r.QueryParams {
+			fn := GoPublicIdent(p.Name)
+			if fn == "" {
+				return GoRoute{}, fmt.Errorf("%s: invalid query param name %q", r.Name, p.Name)
+			}
+			scalarKind, ok := scalarKindForTypeRef(p.Type, types)
+			if !ok {
+				return GoRoute{}, fmt.Errorf("%s: unsupported query param type %q", r.Name, p.Name)
+			}
+			parseKind := parseKindForScalar(scalarKind)
+			goType := renderGoTypeRef(p.Type, p.Required, false, false)
+			queryFields = append(queryFields, GoQueryField{
+				Name:      fn,
+				JSONName:  p.Name,
+				Type:      goType,
+				Tag:       buildJSONTag(p.Name, p.Required),
+				Required:  p.Required,
+				ParseKind: parseKind,
+				IsPointer: strings.HasPrefix(goType, "*"),
+			})
+		}
+	}
+
 	return GoRoute{
-		Name:   r.Name,
-		Method: r.Method,
-		Path:   r.Path,
+		Name:       r.Name,
+		Method:     r.Method,
+		Path:       r.Path,
+		MethodName: methodName,
 
 		TagName: tag,
 
@@ -260,7 +305,8 @@ func toGoRoute(tag string, r ir.Route) (GoRoute, error) {
 		BodyInline: bodyInline,
 		RespInline: respInline,
 
-		PathFields: pathFields,
+		PathFields:  pathFields,
+		QueryFields: queryFields,
 
 		HandlerName: "handle" + op,
 	}, nil
@@ -274,6 +320,69 @@ func goTypeFromTypeRef(tr ir.TypeRef, fallback string) string {
 		return fallback
 	}
 	return "any"
+}
+
+func methodName(method string) string {
+	switch strings.ToUpper(method) {
+	case "GET":
+		return "Get"
+	case "POST":
+		return "Post"
+	default:
+		return ""
+	}
+}
+
+func scalarKindForTypeRef(tr ir.TypeRef, types map[string]ir.TypeDecl) (string, bool) {
+	if tr.Inline != nil {
+		switch tr.Inline.Kind {
+		case ir.KindScalar:
+			return tr.Inline.Scalar, true
+		case ir.KindEnum:
+			return "string", true
+		default:
+			return "", false
+		}
+	}
+	if tr.RefName != "" {
+		td, ok := types[tr.RefName]
+		if !ok {
+			return "", false
+		}
+		switch td.Type.Kind {
+		case ir.KindScalar:
+			return td.Type.Scalar, true
+		case ir.KindEnum:
+			return "string", true
+		default:
+			return "", false
+		}
+	}
+	return "", false
+}
+
+func parseKindForScalar(kind string) string {
+	switch kind {
+	case "integer":
+		return "int64"
+	case "number":
+		return "float64"
+	case "boolean":
+		return "bool"
+	default:
+		return "string"
+	}
+}
+
+func hasQuery(tags []GoTag) bool {
+	for _, tag := range tags {
+		for _, route := range tag.Routes {
+			if route.HasQuery {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ---- helpers ----
