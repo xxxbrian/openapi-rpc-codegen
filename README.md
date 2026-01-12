@@ -31,18 +31,18 @@
 支持：
 
 - OpenAPI 3.0.x
-- HTTP 方法：GET、POST
-- 成功响应：只允许一个 200
-- Content-Type：application/json
-- components.schemas 中的对象定义
-- type: object | string | number | integer | boolean | array
-- nullable
-- $ref（强烈推荐）
+- HTTP 方法：`GET`、`POST`
+- 成功响应：只允许一个 `200`
+- Content-Type：`application/json`
+- `components.schemas` 中的对象定义
+- `type: object | string | number | integer | boolean | array`
+- `nullable`
+- `$ref`（强烈推荐）
 
 不支持（刻意不支持）
 
-- oneOf / allOf / anyOf
-- additionalProperties
+- `oneOf / allOf / anyOf`
+- `additionalProperties`
 - 多个 success response（如 201 / 204）
 - 非 JSON（form / multipart / text）
 - 复杂 content negotiation
