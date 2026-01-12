@@ -35,7 +35,7 @@ func EmitClient(spec *ir.Spec, opt EmitOptions) ([]string, error) {
 		return nil, fmt.Errorf("exec client template: %w", err)
 	}
 
-	outPath := filepath.Join(opt.OutDir, "client.gen.ts")
+	outPath := filepath.Join(opt.OutDir, "ts-wx", "client.gen.ts")
 	wrote, err := common.WriteFile(outPath, buf.Bytes(), common.WriteOptions{Check: opt.Check})
 	if err != nil {
 		return nil, err

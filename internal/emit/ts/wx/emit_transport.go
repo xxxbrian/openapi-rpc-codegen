@@ -31,7 +31,7 @@ func EmitTransport(spec *ir.Spec, opt EmitOptions) ([]string, error) {
 		return nil, fmt.Errorf("exec transport template: %w", err)
 	}
 
-	outPath := filepath.Join(opt.OutDir, "transport.ts")
+	outPath := filepath.Join(opt.OutDir, "ts-wx", "transport.ts")
 	wrote, err := common.WriteFile(outPath, buf.Bytes(), common.WriteOptions{Check: opt.Check})
 	if err != nil {
 		return nil, err

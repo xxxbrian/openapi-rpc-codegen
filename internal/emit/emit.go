@@ -3,7 +3,7 @@ package emit
 import (
 	"fmt"
 
-	"github.com/xxxbrian/openapi-rpc-codegen/internal/emit/wx"
+	"github.com/xxxbrian/openapi-rpc-codegen/internal/emit/ts/wx"
 	"github.com/xxxbrian/openapi-rpc-codegen/internal/ir"
 )
 

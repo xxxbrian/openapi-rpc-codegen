@@ -48,7 +48,7 @@ func EmitTypes(spec *ir.Spec, opt EmitOptions) ([]string, error) {
 		return nil, fmt.Errorf("exec types template: %w", err)
 	}
 
-	outPath := filepath.Join(opt.OutDir, "types.gen.ts")
+	outPath := filepath.Join(opt.OutDir, "ts-wx", "types.gen.ts")
 	wrote, err := common.WriteFile(outPath, buf.Bytes(), common.WriteOptions{Check: opt.Check})
 	if err != nil {
 		return nil, err
