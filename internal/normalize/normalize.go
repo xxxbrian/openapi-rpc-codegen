@@ -35,6 +35,13 @@ func ToIR(doc *openapi3.T, opt Options) (*ir.Spec, error) {
 		Routes: []ir.Route{},
 	}
 
+	// Collect component schemas as types
+	types, err := collectComponentSchemas(doc)
+	if err != nil {
+		return nil, err
+	}
+	out.Types = types
+
 	// Enforce: every operation must have unique operationId
 	seenOpID := map[string]string{} // opId -> "METHOD path"
 
