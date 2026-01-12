@@ -3,6 +3,7 @@ package emit
 import (
 	"fmt"
 
+	"github.com/xxxbrian/openapi-rpc-codegen/internal/emit/go/server"
 	"github.com/xxxbrian/openapi-rpc-codegen/internal/emit/ts/wx"
 	"github.com/xxxbrian/openapi-rpc-codegen/internal/ir"
 )
@@ -46,6 +47,17 @@ func Dispatch(spec *ir.Spec, opt Options) ([]string, error) {
 				return nil, err
 			}
 			files = append(files, fs3...)
+		case "go-server":
+			fs, err := server.Emit(spec, server.EmitOptions{
+				OutDir:  opt.OutDir,
+				Check:   opt.Check,
+				Package: "server",
+			})
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, fs...)
+
 		default:
 			return nil, fmt.Errorf("unknown target: %s", t)
 		}
