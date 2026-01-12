@@ -3,6 +3,7 @@ package emit
 import (
 	"fmt"
 
+	"github.com/xxxbrian/openapi-rpc-codegen/internal/emit/wx"
 	"github.com/xxxbrian/openapi-rpc-codegen/internal/ir"
 )
 
@@ -27,6 +28,15 @@ func Dispatch(spec *ir.Spec, opt Options) ([]string, error) {
 		case "raw-ir":
 			// TODO: Emit raw IR for debugging
 			fmt.Printf("%+v\n", spec)
+		case "ts-wx":
+			fs, err := wx.EmitTypes(spec, wx.EmitOptions{
+				OutDir: opt.OutDir,
+				Check:  opt.Check,
+			})
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, fs...)
 		default:
 			return nil, fmt.Errorf("unknown target: %s", t)
 		}
